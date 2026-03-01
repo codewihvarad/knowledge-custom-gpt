@@ -3,8 +3,9 @@ ollama
 chromadb
 pandas
 numpy
+nltk
 python-dotenv
-langchain-community
+langchain_community
 langchain-ollama
 langchain-chroma
 langchain-huggingface
