@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Knowledge Bot | Powered by Ollama + Neo4j</title>
+  <meta name="description" content="Production-ready RAG chatbot powered by Ollama LLM and Neo4j Graph Database. Upload documents and ask intelligent questions." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Animated background -->
+  <div class="bg-grid"></div>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- ── Sidebar ─────────────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">⚡</span>
+          <div>
+            <h1 class="logo-title">RAG Bot</h1>
+            <p class="logo-sub">Neo4j + Ollama</p>
+          </div>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+      </div>
+
+      <!-- Status pills -->
+      <div class="status-bar">
+        <div class="status-pill" id="neo4jStatus">
+          <span class="status-dot"></span>Neo4j
+        </div>
+        <div class="status-pill" id="ollamaStatus">
+          <span class="status-dot"></span>Ollama
+        </div>
+      </div>
+
+      <!-- Upload Zone -->
+      <section class="upload-section">
+        <h2 class="section-title">📄 Knowledge Base</h2>
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-icon">⬆️</div>
+          <p class="upload-text">Drop PDF / TXT here</p>
+          <p class="upload-sub">or <label for="fileInput" class="upload-link">browse files</label></p>
+          <input type="file" id="fileInput" accept=".pdf,.txt,.md" hidden />
+        </div>
+        <div class="upload-progress hidden" id="uploadProgress">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <p class="progress-label" id="progressLabel">Ingesting…</p>
+        </div>
+      </section>
+
+      <!-- Document List -->
+      <section class="docs-section">
+        <div class="docs-header">
+          <span class="section-title">📚 Documents</span>
+          <span class="doc-count badge" id="docCount">0</span>
+        </div>
+        <ul class="doc-list" id="docList">
+          <li class="doc-empty">No documents yet</li>
+        </ul>
+      </section>
+
+      <!-- Settings -->
+      <section class="settings-section">
+        <h2 class="section-title">⚙️ Settings</h2>
+        <div class="setting-row">
+          <label class="setting-label" for="streamToggle">Streaming</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="streamToggle" checked />
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label class="setting-label" for="topK">Top-K Results</label>
+          <input type="number" id="topK" class="setting-input" value="5" min="1" max="20" />
+        </div>
+      </section>
+    </aside>
+
+    <!-- ── Main Chat Area ─────────────────────────────────────────── -->
+    <main class="chat-area">
+      <!-- Header -->
+      <header class="chat-header">
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">☰</button>
+        <div class="chat-title">
+          <span class="chat-title-text">Knowledge Assistant</span>
+          <span class="chat-subtitle">Ask anything about your documents</span>
+        </div>
+        <button class="clear-btn" id="clearBtn" aria-label="Clear chat">🗑 Clear</button>
+      </header>
+
+      <!-- Messages -->
+      <div class="messages-container" id="messagesContainer">
+        <!-- Welcome message -->
+        <div class="message bot-message welcome-message" id="welcomeMsg">
+          <div class="message-avatar bot-avatar">🤖</div>
+          <div class="message-bubble">
+            <div class="message-content">
+              <strong>Welcome to RAG Bot!</strong><br /><br />
+              I'm your intelligent document assistant powered by <span class="highlight">Ollama (Mistral)</span> and <span class="highlight">Neo4j Graph DB</span>.<br /><br />
+              <strong>To get started:</strong>
+              <ol>
+                <li>📄 Upload a PDF or TXT document in the sidebar</li>
+                <li>⏳ Wait for ingestion to complete</li>
+                <li>💬 Ask questions about your document</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typing indicator -->
+      <div class="typing-indicator hidden" id="typingIndicator">
+        <div class="message-avatar bot-avatar">🤖</div>
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <div class="suggestions" id="suggestions">
+          <button class="suggestion-chip" onclick="fillSuggestion(this)">Summarize the document</button>
+          <button class="suggestion-chip" onclick="fillSuggestion(this)">What are the key topics?</button>
+          <button class="suggestion-chip" onclick="fillSuggestion(this)">List the main findings</button>
+        </div>
+        <div class="input-wrapper">
+          <textarea
+            id="questionInput"
+            class="question-input"
+            placeholder="Ask a question about your documents…"
+            rows="1"
+            aria-label="Chat input"
+          ></textarea>
+          <button class="send-btn" id="sendBtn" aria-label="Send message">
+            <span class="send-icon">➤</span>
+          </button>
+        </div>
+        <p class="input-footer">Powered by Ollama + Neo4j · <a href="/docs" target="_blank" class="api-link">API Docs</a></p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast hidden" id="toast">
+    <span class="toast-icon">✅</span>
+    <span class="toast-msg" id="toastMsg"></span>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

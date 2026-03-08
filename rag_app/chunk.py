@@ -1,15 +1,41 @@
+"""
+chunk.py — Smart recursive text splitter with metadata preservation.
+"""
+from typing import List
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from loguru import logger
 
-text="""The LangSmith Python SDK provides a convenient way to interact with the LangSmith API, allowing you to"""
+from config import get_settings
 
-def chunk_text(text):
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=10,
-        chunk_overlap=2,
+settings = get_settings()
+
+
+def chunk_documents(documents: List[Document]) -> List[Document]:
+    """
+    Split a list of LangChain Documents into smaller overlapping chunks.
+    Preserves and enriches metadata from the original documents.
+    """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=settings.chunk_size,
+        chunk_overlap=settings.chunk_overlap,
+        separators=["\n\n", "\n", ". ", " ", ""],
         length_function=len,
-        is_separator_regex=False,
+        add_start_index=True,
     )
-    return text_splitter.create_documents([text])
 
-results = chunk_text(text)
-print(results)
+    chunks = splitter.split_documents(documents)
+
+    # Enrich metadata
+    for i, chunk in enumerate(chunks):
+        chunk.metadata["chunk_index"] = i
+        chunk.metadata.setdefault("page", chunk.metadata.get("page", 0))
+
+    logger.info(
+        "Split {} document(s) into {} chunks (size={}, overlap={})",
+        len(documents),
+        len(chunks),
+        settings.chunk_size,
+        settings.chunk_overlap,
+    )
+    return chunks
